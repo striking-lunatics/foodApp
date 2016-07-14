@@ -240,19 +240,7 @@ app.get('/user/likes', function(req, res) {
 });
 
 
-// request(geoURL, function(error, response, body) {
-//       if (!error && response.statusCode == 200) {
-//          var data = JSON.parse(body);
-//          if (data.results[0]) {
-//             lat = data.results[0].geometry.location.lat;
-//             long = data.results[0].geometry.location.lng;
-//          }
-//       } else {
-//          console.log("error: ", error)
-//       }
-//    })
 
-// http://api.brewerydb.com/v2/brewery/rkmM7h/?key=da506aecce47e548b1877f8c6f9be793
 
 var port = process.env.PORT || 1337;
 app.listen(port);
