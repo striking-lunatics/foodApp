@@ -72,14 +72,27 @@ app.post('/location', function(req, res) {
    const URL = `http://api.brewerydb.com/v2/search/geo/point?withSocialAccounts=Y&radius=30&lat=${req.body.latitude}&lng=${req.body.longitude}&key=${API}`;
 
    request(URL, function(error, response, body) {
-      if (!error && response.statusCode == 200) {
+      if (!error && response.statusCode == 200) { 
+
+        var parsedBody = JSON.parse(body);
+        // console.log("showing results for nearby radius:", parsedBody.data); 
+        // console.log()
+        includeBreweryLikes(parsedBody.data)
+          .then(function(breweriesWithLikes) {
+            console.log("showing breweries after likes added:",breweriesWithLikes);
+            parsedBody.data = breweriesWithLikes 
+            res.send(parsedBody);
+          })
+
          //console.log('/location: Sending Data')
-         res.send(JSON.parse(body));
+         // res.send(); 
       } else {
          console.log("/location error: ", error)
       }
    })
-});
+}); 
+
+
 
 app.post('/brewery/beer', function(req, res) {
 
@@ -247,7 +260,7 @@ app.post('/login', function(req, res) {
                     res.send(400, "user is already logged in!")
                   }
                   else {
-                    retrieveLikes(user.id)
+                    retrieveLikedBreweries(user.id)
                       .then(function(breweryData) {
                         console.log("showing brewery data:", breweryData);
                         res.cookie('sessionId', newSessionInfo.id) 
@@ -265,7 +278,7 @@ app.post('/login', function(req, res) {
 //Upon a successful login it retrieves ids of the user's previously liked breweries and then 
 //does api calls for each one, returning an array of promised brewery data 
 
-function retrieveLikes(userId) {
+function retrieveLikedBreweries(userId) {
 
   return Brewery.getLikedBreweries(userId)
     .then(function(breweries) {
@@ -280,9 +293,11 @@ function retrieveLikes(userId) {
           request(url, function(error, response, body) {
 
             if (!error && response.statusCode == 200) {
-             var data = JSON.parse(body);
-             // console.log("data from api brewery id call:", data.data);
-             resolve(data.data)
+             var data = JSON.parse(body); 
+             // console.log("showing likes inside new promise:", brewery.likes);
+             // console.log("data from api brewery id call:", data.data); 
+             data.data.likes = brewery.likes;
+             resolve(data.data);
             }
           })
        
@@ -291,6 +306,33 @@ function retrieveLikes(userId) {
       })  
       return Promise.all(promises);
     })
+}
+
+function includeBreweryLikes(companies) {
+
+  console.log("showing breweries:", companies);
+
+  var breweriesWithLikes = companies.map(function(company) {
+
+    return new Promise(function(resolve, reject) {
+
+      db('breweries').select('*').where('id', '=', company  .brewery.id)
+        .then(function(rows) { 
+
+          console.log("showing rows:", rows);
+
+          if(rows.length === 0) {
+            company.brewery.likes = 0;
+          }
+          else {
+            company.brewery.likes = rows[0].likes;
+          }
+          resolve(company)
+        })
+    })
+  })
+
+  return Promise.all(breweriesWithLikes);
 }
 
 app.get('/logout', function(req, res) {
